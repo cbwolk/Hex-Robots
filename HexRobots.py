@@ -20,7 +20,7 @@ plt.style.use('seaborn') # pretty matplotlib plots
 
 # Offset for neighbor modules
 # Adding values to any module gives its 6 neighbors
-### MAKE MORE CLEAR WHAT THIS IS ###
+# TODO: MAKE MORE CLEAR WHAT THIS IS ###
 DIR_OFFSET = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)]
 
 # NOTE: unit and module (lowercase) are used interchangably
@@ -131,6 +131,7 @@ class HexGrid:
         # Do math to convert from x, z cub coordinates to y pixel coordinate
         # Then find the lowest y value and record
         for unit in levelModules:
+            # loopNum = 2. * np.sin(np.radians(60)) * (-2 * unit.get_r() - unit.get_q()) / 3.
             loopNum = math.sqrt(3) / 2 * unit.get_q() + math.sqrt(3) * unit.get_r()
 
             if loopNum > currBestNum:
@@ -149,6 +150,7 @@ class HexGrid:
         # Do math to convert from x, z cub coordinates to y pixel coordinate
         # Then find the highest y value and record
         for unit in levelModules:
+            # loopNum = 2. * np.sin(np.radians(60)) * (-2 * unit.get_r() - unit.get_q()) / 3.
             loopNum = math.sqrt(3) / 2 * unit.get_q() + math.sqrt(3) * unit.get_r()
 
             if loopNum < currBestNum:
@@ -338,7 +340,7 @@ class HexGrid:
         pivotList = []
 
         ##### RESTRICTED MOVE #####
-        if not canMove(unit):
+        if not self.canMove(unit):
             return
 
         hexNeighbors = self.getNeighbors(unit, graph)
@@ -418,44 +420,73 @@ class HexGrid:
             ax.add_patch(hex)
 
         lowYUnit = self.getLowest()[0]
+        print(lowYUnit)
         highYUnit = self.getHighest()[0]
+        print(highYUnit)
         lowXUnit = self.getLeftmost()[0]
+        print(lowXUnit)
         highXUnit = self.getRightmost()[0]
+        print(highXUnit)
 
-        lowY = 2. * np.sin(np.radians(60)) * (-2 * lowYUnit.get_r() - lowYUnit.get_q()) / 3.
-        highY = 2. * np.sin(np.radians(60)) * (-2 * highYUnit.get_r() - highYUnit.get_q()) / 3.
-        lowX = lowXUnit.get_q()
-        highX = highXUnit.get_q()
+        allQ = [lowYUnit.get_q(), highYUnit.get_q(), lowXUnit.get_q(), highXUnit.get_q()]
+        allR = [lowYUnit.get_r(), highYUnit.get_r(), lowXUnit.get_r(), highXUnit.get_r()]
+        maxQ = max(allQ)
+        minQ = min(allQ)
+        maxR = max(allR)
+        minR = min(allR)
+
+        print(maxR)
+        ax.set(xlim=(minQ - 2, maxQ + 2), ylim=(min(vcoord) - 2, max(vcoord) + 2))
+
+        # lowY = 2. * np.sin(np.radians(60)) * (-2 * lowYUnit.get_r() - lowYUnit.get_q()) / 3.
+        # highY = 2. * np.sin(np.radians(60)) * (-2 * highYUnit.get_r() - highYUnit.get_q()) / 3.
+        # lowX = lowXUnit.get_q()
+        # highX = highXUnit.get_q()
+
+        empty_hcoord = []
+        empty_vcoord = []
+
+        for q in np.arange(minQ - 10, maxQ + 10):
+            for r in np.arange(minR - 10, maxR + 10):
+                if self.getModule(q,r) is None:
+                    empty_hcoord.append(q)
+                    empty_vcoord.append(2. * np.sin(np.radians(60)) * (-2 * r - q) / 3.)
+
+        for x, y in zip(empty_hcoord, empty_vcoord):
+            hex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
+                                 orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
+            ax.add_patch(hex)
 
         # Draw empty hexagons for background
         # 1.154700538379251 # 1/3, 1/3, 2/3. 3/3 //// 2/3, 2/3, 1/3, 2/3
-        if (highYUnit.get_r() - highYUnit.get_r() % 2) == 0 or (highX - lowX % 2) == 0:
-            for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (2. / 3.), highY + 2. * np.sin(np.radians(60)) * (2. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
-                for x in np.arange(lowX,highX + 2, 2):
-                    # if x not in hcoord or y not in vcoord:
-                        emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
-                                            orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
-                        ax.add_patch(emptyHex)
+        # print((highX - lowX) % 2)
+        # if ((highX - lowX) % 2) != 0:
+        # for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (1. / 3.), highY + 2. * np.sin(np.radians(60)) * (1. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
+        #     for x in np.arange(lowX, highX + 2, 2):
+        #         # if x not in hcoord or y not in vcoord:
+        #         emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
+        #                                 orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
+        #         ax.add_patch(emptyHex)
+        #
+        # for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (2. / 3.), highY + 2. * np.sin(np.radians(60)) * (2. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
+        #     for x in np.arange(lowX - 1, highX + 3, 2):
+        #         emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
+        #                                 orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
+        #         ax.add_patch(emptyHex)
 
-            for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (1. / 3.), highY + 2. * np.sin(np.radians(60)) * (2. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
-                for x in np.arange(lowX - 1, highX + 3, 2):
-                    emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
-                                            orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
-                    ax.add_patch(emptyHex)
-
-        else:
-            for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (1. / 3.), highY + 2. * np.sin(np.radians(60)) * (1. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
-                for x in np.arange(lowX, highX + 2, 2):
-                    # if x not in hcoord or y not in vcoord:
-                        emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
-                                            orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
-                        ax.add_patch(emptyHex)
-
-            for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (2. / 3.), highY + 2. * np.sin(np.radians(60)) * (3. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
-                for x in np.arange(lowX - 1, highX + 3, 2):
-                    emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
-                                            orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
-                    ax.add_patch(emptyHex)
+        # else:
+        #     for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (2. / 3.), highY + 2. * np.sin(np.radians(60)) * (2. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
+        #         for x in np.arange(lowX, highX + 2, 2):
+        #             # if x not in hcoord or y not in vcoord:
+        #             emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
+        #                                     orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
+        #             ax.add_patch(emptyHex)
+        #
+        #     for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (1. / 3.), highY + 2. * np.sin(np.radians(60)) * (3. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
+        #         for x in np.arange(lowX - 1, highX + 3, 2):
+        #             emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
+        #                                     orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
+        #             ax.add_patch(emptyHex)
 
         ax.scatter(hcoord, vcoord, alpha=0.5)
         plt.show()
@@ -489,12 +520,17 @@ class HexGrid:
 def main():
     # Create an easy test grid
     # hg = HexGrid({Module(-2, 5), Module(-2, 4), Module(-2, 3), Module(-2, 2), Module(-2, 1),
-    #               Module(-1, 0), Module(0, 0), Module(1, 0), Module(1, 1), Module(2, 1),
-    #               Module(3, 1), Module(4, 1), Module(5, 0), Module(6, -1), Module(7, -1)})
+    #                Module(-1, 0), Module(0, 0), Module(1, 0), Module(1, 1), Module(2, 1),
+    #                Module(3, 1), Module(4, 1), Module(5, 0), Module(6, -1), Module(7, -1), Module(8, -1)})
+
+    # hg = HexGrid({Module(2, 0)})
     hg = HexGrid()
     hg.convertHexTiler()
     # Get the levels in the grpah and print them in different colors
+    # hg = HexGrid({Module(2, 0)})
     hg.visualize(hg.getLevels())
+    # hg = HexGrid({Module(2, 0), Module(3, 0)})
+    # hg.visualize(hg.getLevels())
 
 if __name__ == '__main__': main()
 
