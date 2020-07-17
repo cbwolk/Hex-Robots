@@ -21,7 +21,9 @@ plt.style.use('seaborn') # pretty matplotlib plots
 # Offset for neighbor modules
 # Adding values to any module gives its 6 neighbors
 # TODO: MAKE MORE CLEAR WHAT THIS IS ###
+# SE, NE, N, NW, SW, S
 DIR_OFFSET = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)]
+allPivots = []
 
 # NOTE: unit and module (lowercase) are used interchangably
 
@@ -121,7 +123,7 @@ class HexGrid:
         return neighbors
 
     # Get lowest module in given graph in terms of y pixel coordinate
-    def getLowest(self, levelModules=None):
+    def getLowest(self, startUnit=None, levelModules=None):
         if levelModules is None:
             levelModules = self.modules
 
@@ -137,10 +139,14 @@ class HexGrid:
             if loopNum > currBestNum:
                 currBestNum = loopNum
                 currBest = unit
+            elif loopNum == currBestNum and startUnit is not None:
+                if self.shortestPathLength(startUnit, unit) < self.shortestPathLength(startUnit, currBest):
+                    currBestNum = loopNum
+                    currBest = unit
         return currBest, currBestNum
 
     # Get highest module in terms of y pixel coordinate
-    def getHighest(self, levelModules=None):
+    def getHighest(self, startUnit=None, levelModules=None):
         if levelModules is None:
             levelModules = self.modules
 
@@ -156,7 +162,39 @@ class HexGrid:
             if loopNum < currBestNum:
                 currBestNum = loopNum
                 currBest = unit
+            elif loopNum == currBestNum and startUnit is not None:
+                if self.shortestPathLength(startUnit, unit) < self.shortestPathLength(startUnit, currBest):
+                    currBestNum = loopNum
+                    currBest = unit
         return currBest, currBestNum
+
+    # Get shortest path length
+    def shortestPathLength(self, start, goal, graph=None):
+        if graph is None:
+            graph = self.modules
+
+        moduleQueue = Queue()
+        moduleQueue.put(start)
+
+        # Only insert first module and set its "visited" value to true
+        visited = {start: True}
+        dist = {start: 0}
+
+        # Modified BFS loop; it breaks when the given "end" node is dequeued
+        while not moduleQueue.empty():
+            current = moduleQueue.get()
+
+            # Stop BFS when goal node reached
+            if current == goal:
+                return dist[goal]
+
+            for nextModule in self.getNeighbors(current, graph):
+                if nextModule not in visited:
+                    dist[nextModule] = dist[current] + 1
+                    moduleQueue.put(nextModule)
+                    visited[nextModule] = True
+
+        return dist[goal]
 
     # Get leftmost module in terms of the "q" coordinate (equivalent to x in pixel)
     def getLeftmost(self, levelModules=None):
@@ -251,16 +289,17 @@ class HexGrid:
 
         # The virtual flip. state 1 is original orientation, 0 is flipped
         state = 1
+        start = next(iter(currModules))
         while len(currModules) is not 0:
 
             # Assign level start and end values
             # Note: the "end" value is not included in the current level
             if state == 1:
-                start = self.getLowest(currModules)[0]
-                end = self.getHighest(currModules)[0]
+                start = self.getLowest(start, currModules)[0]
+                end = self.getHighest(start, currModules)[0]
             else:
-                end = self.getLowest(currModules)[0]
-                start = self.getHighest(currModules)[0]
+                end = self.getLowest(start, currModules)[0]
+                start = self.getHighest(start, currModules)[0]
 
             # For testing levels
             print(self.canMove(start, end, currModules))
@@ -324,6 +363,7 @@ class HexGrid:
                     adjSpaces.append(emptyNeighbor)
         return adjSpaces
 
+
     # NOT YET IMPLEMENTED
     # IDEA:   Find where innermost non-cut vertex can move
     # STEP 1: Make a new graph consisting of ALL empty spaces adjacent
@@ -331,17 +371,15 @@ class HexGrid:
     # STEP 2: Attempt to traverse new graph from given vertex, mark
     #         vertices which can be accessed by both moves. Do this by
     #         testing different possibilities at current position of module.
-    def getPivotingOptions(self, unit, graph=None):
-        if graph == None:
+    def getPivotingOptions(self, unit, graph=None, pivotList=[]):
+        if graph is None:
             graph = self.modules
 
-        adjSpaces = self.getAdjSpaces(unit, graph)
-
-        pivotList = []
+        # adjSpaces = self.getAdjSpaces(graph)
 
         ##### RESTRICTED MOVE #####
-        if not self.canMove(unit):
-            return
+        # if not self.canMove(unit):
+        #     return
 
         hexNeighbors = self.getNeighbors(unit, graph)
 
@@ -354,23 +392,61 @@ class HexGrid:
             allAdjPos.append(neighbor)
 
         for i in range(3):
-            if allAdjPos[i] is None and allAdjPos[i + 3] is None:
+            if allAdjPos[i] is not None and allAdjPos[i + 3] is not None:
                 return
-        #
-        # curr = allAdjPos[0]
-        # for i in range(6):
-        #     if allAdjPos[i] is not None:
-        #         curr = allAdjPos[i]
-        #         critical1 = allAdjPos[(i + 3) % 6]
-        #         critical2 = allAdjPos[(i + 4) % 6]
-        #         critical3 = allAdjPos[(i + 5) % 6]
-        #         newQ = critical2.get_q() + 1
-        #         newR = critical3.get_r() + 1
-        #
-        #         if getModule(newQ, newR) is None:
-        #             pivotList
 
+        curr = allAdjPos[0]
 
+        pL1 = [[], [], [], [], [], []]
+        pL2 = [[], [], [], [], [], []]
+
+        for i in range(6):
+            if allAdjPos[i] is not None:
+                curr = allAdjPos[i]
+                critical1 = allAdjPos[(i + 1) % 6]
+                critical2 = allAdjPos[(i + 2) % 6]
+                critical3 = allAdjPos[(i + 3) % 6]
+                critical4 = allAdjPos[(i + 4) % 6]
+                critical5 = allAdjPos[(i + 5) % 6]
+
+                print("ADJACENT")
+                print(allAdjPos[(i + 1) % 6])
+                print(allAdjPos[(i + 2) % 6])
+                print(allAdjPos[(i + 3) % 6])
+                print(allAdjPos[(i + 4) % 6])
+                print(allAdjPos[(i + 5) % 6])
+
+                if critical3 is None and critical4 is None and critical5 is None:
+                    print("Critical5:")
+                    pivotModule = Module(curr.get_q() + DIR_OFFSET[(i + 5) % 6][0], curr.get_r() + DIR_OFFSET[(i + 5) % 6][1])
+                    print(pivotModule)
+
+                    if pivotModule not in pivotList:
+                        # allPivots.append(pivotModule)
+                        pivotList.append(pivotModule)
+                        newGraph = graph.copy()
+                        newGraph.remove(unit)
+                        newGraph.add(pivotModule)
+                        pL1[i] = self.getPivotingOptions(pivotModule, newGraph, pivotList)
+                elif critical3 is None and critical2 is None and critical1 is None:
+                    print("Critical1:")
+                    pivotModule = Module(curr.get_q() + DIR_OFFSET[(i + 1) % 6][0], curr.get_r() + DIR_OFFSET[(i + 1) % 6][1])
+                    print(pivotModule)
+
+                    if pivotModule not in pivotList:
+                        # allPivots.append(pivotModule)
+                        pivotList.append(pivotModule)
+                        newGraph = graph.copy()
+                        newGraph.remove(unit)
+                        newGraph.add(pivotModule)
+                        pL2[i] = self.getPivotingOptions(pivotModule, newGraph, pivotList)
+
+        for i in range(6):
+            result = []
+            if pL1[i] or pL2[i]:
+                result += pL1[i] + pL2[i]
+        if result:
+            return result
         # curr = current free module
         # n = curr's neighbors
         # Let n's neighboring grid positions be labeled A, B, C, D, E, F in some radial ordering
@@ -384,11 +460,12 @@ class HexGrid:
         ##### MONKEY MOVE #####
         # SAME as above, except remove line: *** AND ... C ***s
 
+        print('returning')
         return pivotList
 
     # Roughly based on code from:
     # https://stackoverflow.com/questions/46525981/how-to-plot-x-y-z-coordinates-in-the-shape-of-a-hexagonal-grid
-    def visualize(self, graph=[]):
+    def visualize(self, graph=[], pivotList=[]):
         if not graph:
             graph.append(self.modules)
 
@@ -420,13 +497,9 @@ class HexGrid:
             ax.add_patch(hex)
 
         lowYUnit = self.getLowest()[0]
-        print(lowYUnit)
         highYUnit = self.getHighest()[0]
-        print(highYUnit)
         lowXUnit = self.getLeftmost()[0]
-        print(lowXUnit)
         highXUnit = self.getRightmost()[0]
-        print(highXUnit)
 
         allQ = [lowYUnit.get_q(), highYUnit.get_q(), lowXUnit.get_q(), highXUnit.get_q()]
         allR = [lowYUnit.get_r(), highYUnit.get_r(), lowXUnit.get_r(), highXUnit.get_r()]
@@ -438,61 +511,32 @@ class HexGrid:
         print(maxR)
         ax.set(xlim=(minQ - 2, maxQ + 2), ylim=(min(vcoord) - 2, max(vcoord) + 2))
 
-        # lowY = 2. * np.sin(np.radians(60)) * (-2 * lowYUnit.get_r() - lowYUnit.get_q()) / 3.
-        # highY = 2. * np.sin(np.radians(60)) * (-2 * highYUnit.get_r() - highYUnit.get_q()) / 3.
-        # lowX = lowXUnit.get_q()
-        # highX = highXUnit.get_q()
-
         empty_hcoord = []
         empty_vcoord = []
 
+        # Find coordinates of empty hexagons for background
         for q in np.arange(minQ - 10, maxQ + 10):
             for r in np.arange(minR - 10, maxR + 10):
                 if self.getModule(q,r) is None:
                     empty_hcoord.append(q)
                     empty_vcoord.append(2. * np.sin(np.radians(60)) * (-2 * r - q) / 3.)
 
+        # Draw empty hexagons for background
         for x, y in zip(empty_hcoord, empty_vcoord):
             hex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
                                  orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
             ax.add_patch(hex)
 
-        # Draw empty hexagons for background
-        # 1.154700538379251 # 1/3, 1/3, 2/3. 3/3 //// 2/3, 2/3, 1/3, 2/3
-        # print((highX - lowX) % 2)
-        # if ((highX - lowX) % 2) != 0:
-        # for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (1. / 3.), highY + 2. * np.sin(np.radians(60)) * (1. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
-        #     for x in np.arange(lowX, highX + 2, 2):
-        #         # if x not in hcoord or y not in vcoord:
-        #         emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
-        #                                 orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
-        #         ax.add_patch(emptyHex)
-        #
-        # for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (2. / 3.), highY + 2. * np.sin(np.radians(60)) * (2. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
-        #     for x in np.arange(lowX - 1, highX + 3, 2):
-        #         emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
-        #                                 orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
-        #         ax.add_patch(emptyHex)
-
-        # else:
-        #     for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (2. / 3.), highY + 2. * np.sin(np.radians(60)) * (2. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
-        #         for x in np.arange(lowX, highX + 2, 2):
-        #             # if x not in hcoord or y not in vcoord:
-        #             emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
-        #                                     orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
-        #             ax.add_patch(emptyHex)
-        #
-        #     for y in np.arange(lowY - 2. * np.sin(np.radians(60)) * (1. / 3.), highY + 2. * np.sin(np.radians(60)) * (3. / 3.), 2. * np.sin(np.radians(60)) * (2. / 3.)):
-        #         for x in np.arange(lowX - 1, highX + 3, 2):
-        #             emptyHex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
-        #                                     orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
-        #             ax.add_patch(emptyHex)
+        if pivotList:
+            for unit in pivotList:
+                hcoord.append(unit.get_q())
+                vcoord.append(2. * np.sin(np.radians(60)) * (-2 * unit.get_r() - unit.get_q()) / 3.)
 
         ax.scatter(hcoord, vcoord, alpha=0.5)
         plt.show()
 
     # implement hopcroft-tarjan cut vertex alg
-    def isCutVertex():
+    def isCutVertex(self):
         return None
 
     def convertHexTiler(self, inp=None):
@@ -519,20 +563,22 @@ class HexGrid:
 # test levels functionality with preset modules
 def main():
     # Create an easy test grid
-    # hg = HexGrid({Module(-2, 5), Module(-2, 4), Module(-2, 3), Module(-2, 2), Module(-2, 1),
-    #                Module(-1, 0), Module(0, 0), Module(1, 0), Module(1, 1), Module(2, 1),
-    #                Module(3, 1), Module(4, 1), Module(5, 0), Module(6, -1), Module(7, -1), Module(8, -1)})
+    hg = HexGrid({Module(-2, 5), Module(-2, 4), Module(-2, 3), Module(-2, 2), Module(-2, 1),
+                   Module(-1, 0), Module(0, 0), Module(1, 0), Module(1, 1), Module(2, 1),
+                   Module(3, 1), Module(4, 1), Module(5, 0), Module(6, -1), Module(7, -1), Module(8,-1)})
+
+    # hg = HexGrid({Module(0, 0), Module(1, 0), Module(0, 1)})
 
     # hg = HexGrid({Module(2, 0)})
-    hg = HexGrid()
-    hg.convertHexTiler()
+    # hg = HexGrid()
+    # hg.convertHexTiler()
     # Get the levels in the grpah and print them in different colors
     # hg = HexGrid({Module(2, 0)})
-    hg.visualize(hg.getLevels())
+    hg.visualize(hg.getLevels(), hg.getPivotingOptions(Module(8, -1)))
     # hg = HexGrid({Module(2, 0), Module(3, 0)})
     # hg.visualize(hg.getLevels())
 
 if __name__ == '__main__': main()
 
 
-# our goal is to make a thing that can take a robot and move along a path
+# goal: take a robot and move along a path
