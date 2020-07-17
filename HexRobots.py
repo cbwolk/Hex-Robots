@@ -290,7 +290,7 @@ class HexGrid:
         # The virtual flip. state 1 is original orientation, 0 is flipped
         state = 1
         start = next(iter(currModules))
-        while len(currModules) is not 0:
+        while len(currModules) != 0:
 
             # Assign level start and end values
             # Note: the "end" value is not included in the current level
@@ -563,18 +563,18 @@ class HexGrid:
 # test levels functionality with preset modules
 def main():
     # Create an easy test grid
-    hg = HexGrid({Module(-2, 5), Module(-2, 4), Module(-2, 3), Module(-2, 2), Module(-2, 1),
-                   Module(-1, 0), Module(0, 0), Module(1, 0), Module(1, 1), Module(2, 1),
-                   Module(3, 1), Module(4, 1), Module(5, 0), Module(6, -1), Module(7, -1), Module(8,-1)})
+    # hg = HexGrid({Module(-2, 5), Module(-2, 4), Module(-2, 3), Module(-2, 2), Module(-2, 1),
+    #                Module(-1, 0), Module(0, 0), Module(1, 0), Module(1, 1), Module(2, 1),
+    #                Module(3, 1), Module(4, 1), Module(5, 0), Module(6, -1), Module(7, -1), Module(8,-1)})
 
     # hg = HexGrid({Module(0, 0), Module(1, 0), Module(0, 1)})
 
     # hg = HexGrid({Module(2, 0)})
-    # hg = HexGrid()
-    # hg.convertHexTiler()
+    hg = HexGrid()
+    hg.convertHexTiler()
     # Get the levels in the grpah and print them in different colors
     # hg = HexGrid({Module(2, 0)})
-    hg.visualize(hg.getLevels(), hg.getPivotingOptions(Module(8, -1)))
+    hg.visualize(hg.getLevels())
     # hg = HexGrid({Module(2, 0), Module(3, 0)})
     # hg.visualize(hg.getLevels())
 
