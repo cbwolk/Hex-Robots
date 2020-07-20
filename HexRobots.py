@@ -371,9 +371,13 @@ class HexGrid:
     # STEP 2: Attempt to traverse new graph from given vertex, mark
     #         vertices which can be accessed by both moves. Do this by
     #         testing different possibilities at current position of module.
-    def getPivotingOptions(self, unit, graph=None, pivotList=[]):
+    def getPivotingOptions(self, unit, originalUnit=None, graph=None, pivotList=[]):
         if graph is None:
             graph = self.modules
+        if originalUnit is None:
+            originalUnit = unit
+
+        print("\nThe unit:      ", unit)
 
         # adjSpaces = self.getAdjSpaces(graph)
 
@@ -397,8 +401,8 @@ class HexGrid:
 
         curr = allAdjPos[0]
 
-        pL1 = [[], [], [], [], [], []]
-        pL2 = [[], [], [], [], [], []]
+        # pL1 = [[], [], [], [], [], []]
+        # pL2 = [[], [], [], [], [], []]
 
         for i in range(6):
             if allAdjPos[i] is not None:
@@ -409,44 +413,51 @@ class HexGrid:
                 critical4 = allAdjPos[(i + 4) % 6]
                 critical5 = allAdjPos[(i + 5) % 6]
 
-                print("ADJACENT")
-                print(allAdjPos[(i + 1) % 6])
-                print(allAdjPos[(i + 2) % 6])
-                print(allAdjPos[(i + 3) % 6])
-                print(allAdjPos[(i + 4) % 6])
-                print(allAdjPos[(i + 5) % 6])
+                print("ADJACENT: ", (allAdjPos[(i + 1) % 6]), " ", (allAdjPos[(i + 2) % 6]), " ",
+                      (allAdjPos[(i + 3) % 6]), " ", (allAdjPos[(i + 4) % 6]), " ", (allAdjPos[(i + 5) % 6]))
+
+                criticalLeft = False
+                criticalRight = False
 
                 if critical3 is None and critical4 is None and critical5 is None:
-                    print("Critical5:")
-                    pivotModule = Module(curr.get_q() + DIR_OFFSET[(i + 5) % 6][0], curr.get_r() + DIR_OFFSET[(i + 5) % 6][1])
-                    print(pivotModule)
+                    pivotModuleL = Module(curr.get_q() + DIR_OFFSET[(i + 4) % 6][0], curr.get_r() + DIR_OFFSET[(i + 4) % 6][1])
 
-                    if pivotModule not in pivotList:
-                        # allPivots.append(pivotModule)
-                        pivotList.append(pivotModule)
-                        newGraph = graph.copy()
-                        newGraph.remove(unit)
-                        newGraph.add(pivotModule)
-                        pL1[i] = self.getPivotingOptions(pivotModule, newGraph, pivotList)
-                elif critical3 is None and critical2 is None and critical1 is None:
-                    print("Critical1:")
-                    pivotModule = Module(curr.get_q() + DIR_OFFSET[(i + 1) % 6][0], curr.get_r() + DIR_OFFSET[(i + 1) % 6][1])
-                    print(pivotModule)
+                    if pivotModuleL not in allPivots and pivotModuleL not in self.modules:
+                        print("Critical Left: ", pivotModuleL)
+                        criticalLeft = True
+                        allPivots.append(pivotModuleL)
+                        # pivotList.append(pivotModule)
+                        newGraphL = graph.copy()
+                        newGraphL.remove(unit)
+                        newGraphL.add(pivotModuleL)
 
-                    if pivotModule not in pivotList:
-                        # allPivots.append(pivotModule)
-                        pivotList.append(pivotModule)
-                        newGraph = graph.copy()
-                        newGraph.remove(unit)
-                        newGraph.add(pivotModule)
-                        pL2[i] = self.getPivotingOptions(pivotModule, newGraph, pivotList)
+                if critical3 is None and critical2 is None and critical1 is None:
+                    pivotModuleR = Module(curr.get_q() + DIR_OFFSET[(i + 2) % 6][0], curr.get_r() + DIR_OFFSET[(i + 2) % 6][1])
 
-        for i in range(6):
-            result = []
-            if pL1[i] or pL2[i]:
-                result += pL1[i] + pL2[i]
-        if result:
-            return result
+                    if pivotModuleR not in allPivots and pivotModuleR not in self.modules:
+                        print("Critical Right:", pivotModuleR)
+                        criticalRight = True
+                        allPivots.append(pivotModuleR)
+                        # pivotList.append(pivotModule)
+                        newGraphR = graph.copy()
+                        newGraphR.remove(unit)
+                        newGraphR.add(pivotModuleR)
+
+                if criticalLeft:
+                    self.getPivotingOptions(pivotModuleL, originalUnit, newGraphL, allPivots)
+
+                if criticalRight:
+                    self.getPivotingOptions(pivotModuleR, originalUnit, newGraphR, allPivots)
+
+        if originalUnit not in allPivots:
+            allPivots.append(originalUnit)
+
+        # for i in range(6):
+        #     result = []
+        #     if pL1[i] or pL2[i]:
+        #         result += pL1[i] + pL2[i]
+        # if result:
+        #     return result
         # curr = current free module
         # n = curr's neighbors
         # Let n's neighboring grid positions be labeled A, B, C, D, E, F in some radial ordering
@@ -459,9 +470,6 @@ class HexGrid:
 
         ##### MONKEY MOVE #####
         # SAME as above, except remove line: *** AND ... C ***s
-
-        print('returning')
-        return pivotList
 
     # Roughly based on code from:
     # https://stackoverflow.com/questions/46525981/how-to-plot-x-y-z-coordinates-in-the-shape-of-a-hexagonal-grid
@@ -527,12 +535,16 @@ class HexGrid:
                                  orientation=np.radians(30), facecolor='w', alpha=0.2, edgecolor='k')
             ax.add_patch(hex)
 
-        if pivotList:
-            for unit in pivotList:
-                hcoord.append(unit.get_q())
-                vcoord.append(2. * np.sin(np.radians(60)) * (-2 * unit.get_r() - unit.get_q()) / 3.)
+        scatter_hcoord = []
+        scatter_vcoord = []
 
-        ax.scatter(hcoord, vcoord, alpha=0.5)
+        # Draw dots in positions where unit can pivot
+        if allPivots:
+            for unit in allPivots:
+                scatter_hcoord.append(unit.get_q())
+                scatter_vcoord.append(2. * np.sin(np.radians(60)) * (-2 * unit.get_r() - unit.get_q()) / 3.)
+
+        ax.scatter(scatter_hcoord, scatter_vcoord, alpha=0.5)
         plt.show()
 
     # implement hopcroft-tarjan cut vertex alg
@@ -549,13 +561,13 @@ class HexGrid:
         # inp = str(inp) +']'
 
         inp = list(ast.literal_eval(inp))
-        inp = [[i for i in row if i is not ''] for row in inp]
+        inp = [[i for i in row if i != ''] for row in inp]
 
         print(inp)
 
         for idxr, row in enumerate(inp):
             for idxi, item in enumerate(row):
-                if item is not '?':
+                if item != '?':
                     q = idxr
                     r = idxi - (idxr + (idxr & 1)) / 2
                     self.addModule(Module(q, r))
@@ -574,6 +586,7 @@ def main():
     hg.convertHexTiler()
     # Get the levels in the grpah and print them in different colors
     # hg = HexGrid({Module(2, 0)})
+    hg.getPivotingOptions(Module(12, -1))
     hg.visualize(hg.getLevels())
     # hg = HexGrid({Module(2, 0), Module(3, 0)})
     # hg.visualize(hg.getLevels())
