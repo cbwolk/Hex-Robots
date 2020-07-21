@@ -15,6 +15,7 @@ from numpy import inf
 
 from matplotlib import pyplot as plt
 from matplotlib.patches import RegularPolygon
+from functools import reduce
 import seaborn as sns
 plt.style.use('seaborn') # pretty matplotlib plots
 
@@ -63,7 +64,7 @@ class Module:
 # Essentially, it just stores the whole robot. Maybe rename to "Robot" to
 # make it more clear we are NOT just dealing with some n x n grid
 class HexGrid:
-    def __init__(self, modules=set(), levels=1):
+    def __init__(self, modules={}, levels=1):
         self.modules = modules
         self.levels = levels
 
@@ -87,7 +88,7 @@ class HexGrid:
 
     # TO BE REMOVED, replace with getModule()
     def inGrid(self, a, b):
-        return Module(a, b) in self.modules
+        return Module(a, b) in self.modules.keys()
 
     # Return module if it exists in the graph
     def getModule(self, a, b, graph=None):
@@ -95,7 +96,7 @@ class HexGrid:
             graph = self.modules
 
         unit = Module(a, b)
-        if unit in graph:
+        if unit in graph.keys():
             return unit
         return None
 
@@ -105,7 +106,30 @@ class HexGrid:
     # Add a module to the robot
     # TODO: verify it is connected before adding
     def addModule(self, unit):
-        self.modules.add(unit)
+        self.modules[unit] = 0
+
+    def relabel(self):
+        start = self.getLeftmost()[0]
+        graph = self.modules
+        count = 1
+
+        moduleStack = [start]
+        graph[start] = count
+        count += 1
+
+        # Add each unit to dictionary and set "visited" value to false
+        visited = {unit: False for unit in graph}
+        visited[start] = True
+
+        # Standard DFS loop; get next from queue and look at neighbors
+        while moduleStack:
+            current = moduleStack.pop()
+            for nextModule in self.getNeighbors(current, graph):
+                if not visited[nextModule]:
+                    moduleStack.append(nextModule)
+                    visited[nextModule] = True
+                    self.modules[nextModule] = count
+                    count += 1
 
     # Return a list of neighbors of given module
     def getNeighbors(self, unit, graph=None):
@@ -132,7 +156,7 @@ class HexGrid:
 
         # Do math to convert from x, z cub coordinates to y pixel coordinate
         # Then find the lowest y value and record
-        for unit in levelModules:
+        for unit in levelModules.keys():
             # loopNum = 2. * np.sin(np.radians(60)) * (-2 * unit.get_r() - unit.get_q()) / 3.
             loopNum = math.sqrt(3) / 2 * unit.get_q() + math.sqrt(3) * unit.get_r()
 
@@ -155,7 +179,7 @@ class HexGrid:
 
         # Do math to convert from x, z cub coordinates to y pixel coordinate
         # Then find the highest y value and record
-        for unit in levelModules:
+        for unit in levelModules.keys():
             # loopNum = 2. * np.sin(np.radians(60)) * (-2 * unit.get_r() - unit.get_q()) / 3.
             loopNum = math.sqrt(3) / 2 * unit.get_q() + math.sqrt(3) * unit.get_r()
 
@@ -205,7 +229,7 @@ class HexGrid:
         currBestNum = inf
 
         # Then find the leftmost q value and record
-        for unit in levelModules:
+        for unit in levelModules.keys():
             loopNum = unit.get_q()
 
             if loopNum < currBestNum:
@@ -222,7 +246,7 @@ class HexGrid:
         currBestNum = -inf
 
         # Then find the rightmost q value and record
-        for unit in levelModules:
+        for unit in levelModules.keys():
             loopNum = unit.get_q()
 
             if loopNum > currBestNum:
@@ -246,7 +270,7 @@ class HexGrid:
         while moduleStack:
             current = moduleStack.pop()
             for nextModule in self.getNeighbors(current, graph):
-                if nextModule not in visited:
+                if not visited[nextModule]:
                     moduleStack.append(nextModule)
                     visited[nextModule] = True
         return visited
@@ -308,9 +332,9 @@ class HexGrid:
             # Check if this is a cut vertex
             # If so, stop and assign the rest the same level
             if self.canMove(start, end, currModules):
-                thisLev = []
+                thisLev = {}
                 for unit in currModules:
-                    thisLev.append(unit)
+                    thisLev[unit] = 0
                 levels.append(thisLev)
                 break
 
@@ -321,7 +345,7 @@ class HexGrid:
             # Now that we've identified the level, delete those modules
             # from the graph copy to make it easier
             for key in currLev.keys():
-                currModules.remove(key)
+                currModules.pop(key)
 
             # Flip the virtual orientation
             if state == 1:
@@ -339,7 +363,7 @@ class HexGrid:
 
         newGraph = graph.copy()
         if end is not None:
-            newGraph.remove(end)
+            newGraph.pop(end)
         visited = self.DFS(start, newGraph)
 
         # Test if each node was visited in DFS
@@ -356,22 +380,20 @@ class HexGrid:
 
         adjSpaces = []
         # Get all neighbors equal to none (empty spaces)
-        for unit in graph:
+        for unit in graph.keys():
             for d in DIR_OFFSET:
                 emptyNeighbor = self.getModule(unit.get_q() + d[0], unit.get_r() + d[1], graph)
                 if emptyNeighbor is None:
                     adjSpaces.append(emptyNeighbor)
         return adjSpaces
 
-
-    # NOT YET IMPLEMENTED
     # IDEA:   Find where innermost non-cut vertex can move
     # STEP 1: Make a new graph consisting of ALL empty spaces adjacent
     #         to any node in G, inlcuding but not limited to outer shell
     # STEP 2: Attempt to traverse new graph from given vertex, mark
     #         vertices which can be accessed by both moves. Do this by
     #         testing different possibilities at current position of module.
-    def getPivotingOptions(self, unit, setting='Restricted', originalUnit=None, graph=None, pivotList=[]):
+    def computePivots(self, unit, setting='Restricted', originalUnit=None, graph=None, pivotList=[]):
         if graph is None:
             graph = self.modules
         if originalUnit is None:
@@ -435,16 +457,16 @@ class HexGrid:
                             allPivots.append(pivotModuleL)
                             # pivotList.append(pivotModule)
                             newGraphL = graph.copy()
-                            newGraphL.remove(unit)
-                            newGraphL.add(pivotModuleL)
+                            newGraphL.pop(unit)
+                            newGraphL[pivotModuleL] = len(newGraphL) + 1
                     elif keySpace in self.modules and setting == "Monkey" and otherSpace not in self.modules and otherSpace not in allPivots:
                         # TODO: its the same but just with the position taken, so just change landing position, also make isEmpty()
                         print("Monkey Move:", otherSpace)
                         criticalLeft = True
                         allPivots.append(otherSpace)
                         newGraphL = graph.copy()
-                        newGraphL.remove(unit)
-                        newGraphL.add(otherSpace)
+                        newGraphL.pop(unit)
+                        newGraphL[otherSpace] = len(newGraphL) + 1
                         pivotModuleL = otherSpace
                         return
 
@@ -466,23 +488,23 @@ class HexGrid:
                         allPivots.append(pivotModuleR)
                         # pivotList.append(pivotModule)
                         newGraphR = graph.copy()
-                        newGraphR.remove(unit)
-                        newGraphR.add(pivotModuleR)
+                        newGraphR.pop(unit)
+                        newGraphR[pivotModuleR] = len(newGraphR) + 1
                     elif keySpace in self.modules and setting == "Monkey" and otherSpace not in self.modules  and otherSpace not in allPivots:
                         # TODO: its the same but just with the position taken, so just change landing position, also make isEmpty()
                         print("Monkey Move:", otherSpace)
                         criticalRight = True
                         allPivots.append(otherSpace)
                         newGraphR = graph.copy()
-                        newGraphR.remove(unit)
-                        newGraphR.add(otherSpace)
+                        newGraphR.pop(unit)
+                        newGraphR[otherSpace] = len(newGraphR) + 1
                         pivotModuleR = otherSpace
 
                 if criticalLeft:
-                    self.getPivotingOptions(pivotModuleL, setting, originalUnit, newGraphL, allPivots)
+                    self.computePivots(pivotModuleL, setting, originalUnit, newGraphL, allPivots)
 
                 if criticalRight:
-                    self.getPivotingOptions(pivotModuleR, setting, originalUnit, newGraphR, allPivots)
+                    self.computePivots(pivotModuleR, setting, originalUnit, newGraphR, allPivots)
 
         if originalUnit not in allPivots:
             allPivots.append(originalUnit)
@@ -506,11 +528,22 @@ class HexGrid:
         ##### MONKEY MOVE #####
         # SAME as above, except remove line: *** AND ... C ***s
 
+    def getPivotingOptions(self, setting=None, unitNumber=None):
+        if setting is None:
+            setting = input("Enter grid setting (\"Monkey\" or \"Restricted\": ")
+        if unitNumber is None:
+            unitNumber = input("Enter module to see possible moves: ")
+        assert isinstance(int(unitNumber), int), "Please enter an integer"
+
+        # get dictionary key by value
+        keyModule = list(self.modules.keys())[list(self.modules.values()).index(int(unitNumber))]
+        self.computePivots(keyModule, setting)
+
     # Roughly based on code from:
     # https://stackoverflow.com/questions/46525981/how-to-plot-x-y-z-coordinates-in-the-shape-of-a-hexagonal-grid
-    def visualize(self, graph=[], pivotList=[]):
+    def visualize(self, graph={}, pivotList=[]):
         if not graph:
-            graph.append(self.modules)
+            graph.update(self.modules)
 
         # List of nearly all matplotlib colors
         colorList = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
@@ -520,24 +553,27 @@ class HexGrid:
         # Set a color for each level and assign to each hexagon to be printed
         for lev in graph:
             print('Level ' + str(count))
-            for unit in lev:
+            for unit in lev.keys():
                 print(unit)
                 colors.append(colorList[count % 7])
             count = count + 1
 
         # Convert hex to pixel coordinates
-        hcoord = [unit.get_q() for lev in graph for unit in lev]
+        allLabels = [str(self.modules[unit]) for lev in graph for unit in lev.keys()]
+        hcoord = [unit.get_q() for lev in graph for unit in lev.keys()]
         vcoord = [2. * np.sin(np.radians(60)) * (-2 * unit.get_r() - unit.get_q()) / 3. for lev in graph for unit in
-                  lev]
+                  lev.keys()]
 
         fig, ax = plt.subplots(1)
         ax.set_aspect('equal')
 
         # Print each hexagon with proper specifications
-        for x, y, c in zip(hcoord, vcoord, colors):
+        for x, y, c, l in zip(hcoord, vcoord, colors, allLabels):
+            print(l)
             hex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
                                  orientation=np.radians(30), facecolor=c, alpha=0.2, edgecolor='k')
             ax.add_patch(hex)
+            plt.text(x - 1/5, y - 1/6, l)
 
         lowYUnit = self.getLowest()[0]
         highYUnit = self.getHighest()[0]
@@ -607,6 +643,8 @@ class HexGrid:
                     r = idxi - (idxr + (idxr & 1)) / 2
                     self.addModule(Module(q, r))
 
+        self.relabel()
+
 # test levels functionality with preset modules
 def main():
     # Create an easy test grid
@@ -621,7 +659,8 @@ def main():
     hg.convertHexTiler()
     # Get the levels in the grpah and print them in different colors
     # hg = HexGrid({Module(2, 0)}) #10,2, 12, -2
-    hg.getPivotingOptions(Module(11,-4), "Restricted")
+    hg.visualize(hg.getLevels())
+    hg.getPivotingOptions("Monkey")
     hg.visualize(hg.getLevels())
     # hg = HexGrid({Module(2, 0), Module(3, 0)})
     # hg.visualize(hg.getLevels())
