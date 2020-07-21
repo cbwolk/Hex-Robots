@@ -1,6 +1,6 @@
 # Colton Wolk
 # Computational Geometry Lab, Tufts University
-# Last Modified: 06.21.2020
+# Last Modified: 07.21.2020
 
 # HexRobots.py
 # This program implements two classes (Module and HexGrid) which represent
@@ -48,7 +48,7 @@ class Module:
 
     # Print out point nicely
     def __str__(self):
-        return '(' + str(self.q) + ',' + str(self.r) + ')'
+        return '(' + str(int(self.q)) + ',' + str(int(self.r)) + ')'
 
     # TO BE REMOVED, replace with method in hexgrid
     def getModule(self, grid, a, b):
@@ -82,7 +82,7 @@ class HexGrid:
         for unit in self.modules:
             if notFirst:
                 retStr = retStr + ', '
-            retStr = retStr + '(' + str(unit.get_q()) + ',' + str(unit.get_r()) + ')'
+            retStr = retStr + '(' + str(int(unit.get_q())) + ',' + str(int(unit.get_r())) + ')'
             notFirst = True
         return retStr
 
@@ -326,8 +326,9 @@ class HexGrid:
                 start = self.getHighest(start, currModules)[0]
 
             # For testing levels
-            print(self.canMove(start, end, currModules))
-            print('start: ' + str(start) + ' end: ' + str(end))
+            # print(self.canMove(start, end, currModules))
+            # print('start: ' + str(start) + ' end: ' + str(end))
+
 
             # Check if this is a cut vertex
             # If so, stop and assign the rest the same level
@@ -433,8 +434,8 @@ class HexGrid:
                 critical4 = allAdjPos[(i + 4) % 6]
                 critical5 = allAdjPos[(i + 5) % 6]
 
-                print("\nADJACENT: ", (allAdjPos[(i + 1) % 6]), " ", (allAdjPos[(i + 2) % 6]), " ",
-                      (allAdjPos[(i + 3) % 6]), " ", (allAdjPos[(i + 4) % 6]), " ", (allAdjPos[(i + 5) % 6]))
+                # print("\nADJACENT: ", (allAdjPos[(i + 1) % 6]), " ", (allAdjPos[(i + 2) % 6]), " ",
+                #       (allAdjPos[(i + 3) % 6]), " ", (allAdjPos[(i + 4) % 6]), " ", (allAdjPos[(i + 5) % 6]))
 
                 criticalLeft = False
                 criticalRight = False
@@ -442,17 +443,17 @@ class HexGrid:
                 if critical3 is None and critical4 is None and critical5 is None:
                     pivotModuleL = Module(curr.get_q() + DIR_OFFSET[(i + 4) % 6][0], curr.get_r() + DIR_OFFSET[(i + 4) % 6][1])
 
-                    print("\nThe unit:    ", unit)
-                    print("L PIVOT MOD", pivotModuleL)
+                    # print("\nThe unit:    ", unit)
+                    # print("L PIVOT MOD", pivotModuleL)
 
                     keySpace = Module(pivotModuleL.get_q() + DIR_OFFSET[(i + 4) % 6][0],
                                       pivotModuleL.get_r() + DIR_OFFSET[(i + 4) % 6][1])
-                    print('KEY SPACE:', keySpace)
+                    # print('KEY SPACE:', keySpace)
                     otherSpace = Module(keySpace.get_q() + DIR_OFFSET[(i + 2) % 6][0],
                                       keySpace.get_r() + DIR_OFFSET[(i + 2) % 6][1])
 
                     if pivotModuleL not in allPivots and pivotModuleL not in self.modules and keySpace not in self.modules:
-                            print("Critical Left: ", pivotModuleL)
+                            # print("Critical Left: ", pivotModuleL)
                             criticalLeft = True
                             allPivots.append(pivotModuleL)
                             # pivotList.append(pivotModule)
@@ -461,29 +462,28 @@ class HexGrid:
                             newGraphL[pivotModuleL] = len(newGraphL) + 1
                     elif keySpace in self.modules and setting == "Monkey" and otherSpace not in self.modules and otherSpace not in allPivots:
                         # TODO: its the same but just with the position taken, so just change landing position, also make isEmpty()
-                        print("Monkey Move:", otherSpace)
+                        # print("Monkey Move:", otherSpace)
                         criticalLeft = True
                         allPivots.append(otherSpace)
                         newGraphL = graph.copy()
                         newGraphL.pop(unit)
                         newGraphL[otherSpace] = len(newGraphL) + 1
                         pivotModuleL = otherSpace
-                        return
 
                 if critical3 is None and critical2 is None and critical1 is None:
                     pivotModuleR = Module(curr.get_q() + DIR_OFFSET[(i + 2) % 6][0], curr.get_r() + DIR_OFFSET[(i + 2) % 6][1])
 
-                    print("\nThe unit:    ", unit)
-                    print("R PIVOT MOD", pivotModuleR)
+                    # print("\nThe unit:    ", unit)
+                    # print("R PIVOT MOD", pivotModuleR)
 
                     keySpace = Module(pivotModuleR.get_q() + DIR_OFFSET[(i + 2) % 6][0],
                                       pivotModuleR.get_r() + DIR_OFFSET[(i + 2) % 6][1])
-                    print('KEY SPACE:', keySpace)
+                    # print('KEY SPACE:', keySpace)
                     otherSpace = Module(keySpace.get_q() + DIR_OFFSET[(i + 4) % 6][0],
                                       keySpace.get_r() + DIR_OFFSET[(i + 4) % 6][1])
 
                     if pivotModuleR not in allPivots and pivotModuleR not in self.modules and keySpace not in self.modules:
-                        print("Critical Right:", pivotModuleR)
+                        # print("Critical Right:", pivotModuleR)
                         criticalRight = True
                         allPivots.append(pivotModuleR)
                         # pivotList.append(pivotModule)
@@ -492,7 +492,7 @@ class HexGrid:
                         newGraphR[pivotModuleR] = len(newGraphR) + 1
                     elif keySpace in self.modules and setting == "Monkey" and otherSpace not in self.modules  and otherSpace not in allPivots:
                         # TODO: its the same but just with the position taken, so just change landing position, also make isEmpty()
-                        print("Monkey Move:", otherSpace)
+                        # print("Monkey Move:", otherSpace)
                         criticalRight = True
                         allPivots.append(otherSpace)
                         newGraphR = graph.copy()
@@ -552,9 +552,9 @@ class HexGrid:
 
         # Set a color for each level and assign to each hexagon to be printed
         for lev in graph:
-            print('Level ' + str(count))
+            # print('Level ' + str(count))
             for unit in lev.keys():
-                print(unit)
+                # print(unit)
                 colors.append(colorList[count % 7])
             count = count + 1
 
@@ -569,7 +569,6 @@ class HexGrid:
 
         # Print each hexagon with proper specifications
         for x, y, c, l in zip(hcoord, vcoord, colors, allLabels):
-            print(l)
             hex = RegularPolygon((x, y), numVertices=6, radius=2. / 3.,
                                  orientation=np.radians(30), facecolor=c, alpha=0.2, edgecolor='k')
             ax.add_patch(hex)
@@ -587,7 +586,7 @@ class HexGrid:
         maxR = max(allR)
         minR = min(allR)
 
-        print(maxR)
+        # print(maxR)
         ax.set(xlim=(minQ - 2, maxQ + 2), ylim=(min(vcoord) - 2, max(vcoord) + 2))
 
         empty_hcoord = []
@@ -615,7 +614,7 @@ class HexGrid:
                 scatter_hcoord.append(unit.get_q())
                 scatter_vcoord.append(2. * np.sin(np.radians(60)) * (-2 * unit.get_r() - unit.get_q()) / 3.)
 
-        ax.scatter(scatter_hcoord, scatter_vcoord, alpha=0.5)
+        ax.scatter(scatter_hcoord, scatter_vcoord, alpha=0.5, color='r')
         plt.show()
 
     # implement hopcroft-tarjan cut vertex alg
@@ -634,7 +633,7 @@ class HexGrid:
         inp = list(ast.literal_eval(inp))
         inp = [[i for i in row if i != ''] for row in inp]
 
-        print(inp)
+        # print(inp)
 
         for idxr, row in enumerate(inp):
             for idxi, item in enumerate(row):
@@ -669,6 +668,3 @@ if __name__ == '__main__': main()
 
 # goal: take a robot and move along a path
 
-# TODO: implement in dictionary, fix pivot bug (unit across must be empty), and implement monkey move
-# keyQ = pivotModuleL.get_q() - (abs(pivotModuleL.get_q()) - abs(unit.get_q()))
-# keyR = pivotModuleL.get_r() - (abs(unit.get_r()) - abs(pivotModuleL.get_r()))
