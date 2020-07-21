@@ -423,21 +423,30 @@ class HexGrid:
                     print("\nThe unit:    ", unit)
                     print("L PIVOT MOD", pivotModuleL)
 
-                    if setting == 'Restricted':
-                        keyQ = pivotModuleL.get_q() - (abs(pivotModuleL.get_q()) - abs(unit.get_q()))
-                        keyR = pivotModuleL.get_r() - (abs(unit.get_r()) - abs(pivotModuleL.get_r()))
-                        keySpace = Module(pivotModuleL.get_q() + DIR_OFFSET[(i + 4) % 6][0], pivotModuleL.get_r() + DIR_OFFSET[(i + 4) % 6][1])
-
-                        print('KEY SPACE:', keySpace)
+                    keySpace = Module(pivotModuleL.get_q() + DIR_OFFSET[(i + 4) % 6][0],
+                                      pivotModuleL.get_r() + DIR_OFFSET[(i + 4) % 6][1])
+                    print('KEY SPACE:', keySpace)
+                    otherSpace = Module(keySpace.get_q() + DIR_OFFSET[(i + 2) % 6][0],
+                                      keySpace.get_r() + DIR_OFFSET[(i + 2) % 6][1])
 
                     if pivotModuleL not in allPivots and pivotModuleL not in self.modules and keySpace not in self.modules:
-                        print("Critical Left: ", pivotModuleL)
+                            print("Critical Left: ", pivotModuleL)
+                            criticalLeft = True
+                            allPivots.append(pivotModuleL)
+                            # pivotList.append(pivotModule)
+                            newGraphL = graph.copy()
+                            newGraphL.remove(unit)
+                            newGraphL.add(pivotModuleL)
+                    elif keySpace in self.modules and setting == "Monkey" and otherSpace not in self.modules and otherSpace not in allPivots:
+                        # TODO: its the same but just with the position taken, so just change landing position, also make isEmpty()
+                        print("Monkey Move:", otherSpace)
                         criticalLeft = True
-                        allPivots.append(pivotModuleL)
-                        # pivotList.append(pivotModule)
+                        allPivots.append(otherSpace)
                         newGraphL = graph.copy()
                         newGraphL.remove(unit)
-                        newGraphL.add(pivotModuleL)
+                        newGraphL.add(otherSpace)
+                        pivotModuleL = otherSpace
+                        return
 
                 if critical3 is None and critical2 is None and critical1 is None:
                     pivotModuleR = Module(curr.get_q() + DIR_OFFSET[(i + 2) % 6][0], curr.get_r() + DIR_OFFSET[(i + 2) % 6][1])
@@ -445,12 +454,12 @@ class HexGrid:
                     print("\nThe unit:    ", unit)
                     print("R PIVOT MOD", pivotModuleR)
 
-                    if setting == 'Restricted':
-                        keyQ = pivotModuleR.get_q() - (abs(pivotModuleR.get_q()) - abs(unit.get_q()))
-                        keyR = pivotModuleR.get_r() - (abs(unit.get_r()) - abs(pivotModuleR.get_r()))
-                        keySpace = Module(pivotModuleR.get_q() + DIR_OFFSET[(i + 2) % 6][0], pivotModuleR.get_r() + DIR_OFFSET[(i + 2) % 6][1])
+                    keySpace = Module(pivotModuleR.get_q() + DIR_OFFSET[(i + 2) % 6][0],
+                                      pivotModuleR.get_r() + DIR_OFFSET[(i + 2) % 6][1])
+                    print('KEY SPACE:', keySpace)
+                    otherSpace = Module(keySpace.get_q() + DIR_OFFSET[(i + 4) % 6][0],
+                                      keySpace.get_r() + DIR_OFFSET[(i + 4) % 6][1])
 
-                        print('KEY SPACE:', keySpace)
                     if pivotModuleR not in allPivots and pivotModuleR not in self.modules and keySpace not in self.modules:
                         print("Critical Right:", pivotModuleR)
                         criticalRight = True
@@ -459,6 +468,15 @@ class HexGrid:
                         newGraphR = graph.copy()
                         newGraphR.remove(unit)
                         newGraphR.add(pivotModuleR)
+                    elif keySpace in self.modules and setting == "Monkey" and otherSpace not in self.modules  and otherSpace not in allPivots:
+                        # TODO: its the same but just with the position taken, so just change landing position, also make isEmpty()
+                        print("Monkey Move:", otherSpace)
+                        criticalRight = True
+                        allPivots.append(otherSpace)
+                        newGraphR = graph.copy()
+                        newGraphR.remove(unit)
+                        newGraphR.add(otherSpace)
+                        pivotModuleR = otherSpace
 
                 if criticalLeft:
                     self.getPivotingOptions(pivotModuleL, setting, originalUnit, newGraphL, allPivots)
@@ -602,15 +620,16 @@ def main():
     hg = HexGrid()
     hg.convertHexTiler()
     # Get the levels in the grpah and print them in different colors
-    # hg = HexGrid({Module(2, 0)})
-    hg.getPivotingOptions(Module(10,2), "Restricted")
+    # hg = HexGrid({Module(2, 0)}) #10,2, 12, -2
+    hg.getPivotingOptions(Module(11,-4), "Restricted")
     hg.visualize(hg.getLevels())
     # hg = HexGrid({Module(2, 0), Module(3, 0)})
     # hg.visualize(hg.getLevels())
 
 if __name__ == '__main__': main()
 
-
 # goal: take a robot and move along a path
 
 # TODO: implement in dictionary, fix pivot bug (unit across must be empty), and implement monkey move
+# keyQ = pivotModuleL.get_q() - (abs(pivotModuleL.get_q()) - abs(unit.get_q()))
+# keyR = pivotModuleL.get_r() - (abs(unit.get_r()) - abs(pivotModuleL.get_r()))
