@@ -530,9 +530,11 @@ class HexGrid:
 
     def getPivotingOptions(self, setting=None, unitNumber=None):
         if setting is None:
-            setting = input("Enter grid setting (\"Monkey\" or \"Restricted\": ")
+            setting = input("Enter grid setting (\"Monkey\" or \"Restricted\"): ")
         if unitNumber is None:
             unitNumber = input("Enter module to see possible moves: ")
+        # if not self.canMove(int(unitNumber)):
+        #     return
         assert isinstance(int(unitNumber), int), "Please enter an integer"
 
         # get dictionary key by value
@@ -659,7 +661,7 @@ def main():
     # Get the levels in the grpah and print them in different colors
     # hg = HexGrid({Module(2, 0)}) #10,2, 12, -2
     hg.visualize(hg.getLevels())
-    hg.getPivotingOptions("Monkey")
+    hg.getPivotingOptions()
     hg.visualize(hg.getLevels())
     # hg = HexGrid({Module(2, 0), Module(3, 0)})
     # hg.visualize(hg.getLevels())
