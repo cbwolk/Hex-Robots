@@ -164,7 +164,7 @@ class HexGrid:
                 currBestNum = loopNum
                 currBest = unit
             elif loopNum == currBestNum and startUnit is not None:
-                if self.shortestPathLength(startUnit, unit) < self.shortestPathLength(startUnit, currBest):
+                if self.shortestPathLength(startUnit, unit) > self.shortestPathLength(startUnit, currBest):
                     currBestNum = loopNum
                     currBest = unit
         return currBest, currBestNum
@@ -187,7 +187,7 @@ class HexGrid:
                 currBestNum = loopNum
                 currBest = unit
             elif loopNum == currBestNum and startUnit is not None:
-                if self.shortestPathLength(startUnit, unit) < self.shortestPathLength(startUnit, currBest):
+                if self.shortestPathLength(startUnit, unit) > self.shortestPathLength(startUnit, currBest):
                     currBestNum = loopNum
                     currBest = unit
         return currBest, currBestNum
@@ -292,10 +292,10 @@ class HexGrid:
         while not moduleQueue.empty():
             current = moduleQueue.get()
 
-            # Stop BFS when given node reached
+            # Don't explore neighbors after end-of-level node
             if current == end:
                 visited.pop(current)
-                return visited
+                continue
 
             for nextModule in self.getNeighbors(current, graph):
                 if nextModule not in visited:
